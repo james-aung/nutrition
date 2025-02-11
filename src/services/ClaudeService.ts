@@ -7,7 +7,7 @@ const anthropic = new Anthropic({
 
 export const generateDailySummary = async (data: DailySummary): Promise<string> => {
   const message = await anthropic.messages.create({
-    model: 'claude-3-sonnet-20240229',
+    model: 'claude-3-5-sonnet-latest',
     max_tokens: 1000,
     messages: [{
       role: 'user',
@@ -31,5 +31,5 @@ export const generateDailySummary = async (data: DailySummary): Promise<string> 
     }]
   });
 
-  return message.content[0].text;
+  return message.content
 }; 
