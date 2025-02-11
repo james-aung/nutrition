@@ -6,9 +6,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet, Button, Alert } from 'react-native';
+import { SafeAreaView, StyleSheet, Button, Alert, View } from 'react-native';
 import { NutritionSummary } from './src/components/NutritionSummary';
 import { useNutritionTracking } from './src/hooks/useNutritionTracking';
+import { generateSampleData } from './src/services/HealthKitService';
 
 function App(): React.JSX.Element {
   const {
@@ -16,6 +17,7 @@ function App(): React.JSX.Element {
     loading,
     error,
     generateDailySummary,
+    fetchTodaysNutrition,
   } = useNutritionTracking();
 
   const [lastSummaryTime, setLastSummaryTime] = useState<string | null>(null);
@@ -28,6 +30,16 @@ function App(): React.JSX.Element {
     }
   };
 
+  const handleGenerateSampleData = async () => {
+    const success = await generateSampleData();
+    if (success) {
+      Alert.alert('Success', 'Sample data generated successfully');
+      fetchTodaysNutrition(); // Refresh the data display
+    } else {
+      Alert.alert('Error', 'Failed to generate sample data');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <NutritionSummary
@@ -35,10 +47,18 @@ function App(): React.JSX.Element {
         loading={loading}
         error={error}
       />
-      <Button
-        title="Generate Daily Summary"
-        onPress={handleGenerateSummary}
-      />
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Generate Daily Summary"
+          onPress={handleGenerateSummary}
+        />
+        {__DEV__ && ( // Only show in development mode
+          <Button
+            title="Generate Sample Data"
+            onPress={handleGenerateSampleData}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -47,6 +67,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f0f0',
+  },
+  buttonContainer: {
+    padding: 16,
+    gap: 8,
   },
 });
 
