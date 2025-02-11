@@ -1,100 +1,159 @@
-import AppleHealthKit, {
-  HealthInputOptions,
-  HealthKitPermissions,
-} from 'react-native-health';
+import HealthKit, {
+  HKQuantityTypeIdentifier,
+  HKUnit,
+} from '@kingstinct/react-native-healthkit';
 import { NutritionData } from '../types';
 
-const permissions = {
-  permissions: {
-    read: [
-      AppleHealthKit.Constants.Permissions.Dietary,
-      AppleHealthKit.Constants.Permissions.DietaryEnergy,
-      AppleHealthKit.Constants.Permissions.DietaryProtein,
-      AppleHealthKit.Constants.Permissions.DietaryFatTotal,
-      AppleHealthKit.Constants.Permissions.DietaryCarbohydrates,
-    ],
-    write: [],
-  },
-} as HealthKitPermissions;
+export const initializeHealthKit = async (): Promise<void> => {
+  // First check if HealthKit is available
+  const isAvailable = await HealthKit.isHealthDataAvailable();
+  if (!isAvailable) {
+    throw new Error('HealthKit is not available on this device');
+  }
 
-export const initializeHealthKit = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    AppleHealthKit.initHealthKit(permissions, (error: string) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve();
-    });
-  });
+  // Request both read and write permissions
+  await HealthKit.requestAuthorization(
+    [
+      HKQuantityTypeIdentifier.dietaryEnergyConsumed,
+      HKQuantityTypeIdentifier.dietaryProtein,
+      HKQuantityTypeIdentifier.dietaryFatTotal,
+      HKQuantityTypeIdentifier.dietaryCarbohydrates,
+    ],
+    [
+      HKQuantityTypeIdentifier.dietaryEnergyConsumed,
+      HKQuantityTypeIdentifier.dietaryProtein,
+      HKQuantityTypeIdentifier.dietaryFatTotal,
+      HKQuantityTypeIdentifier.dietaryCarbohydrates,
+    ]
+  );
 };
 
 export const getTodaysNutrition = async (): Promise<NutritionData> => {
-  const options: HealthInputOptions = {
-    startDate: new Date().toISOString(),
-    endDate: new Date().toISOString(),
-  };
+  const now = new Date();
+  const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(now.setHours(23, 59, 59, 999));
 
   const [calories, protein, carbs, fat] = await Promise.all([
-    getDietaryEnergy(options),
-    getDietaryProtein(options),
-    getDietaryCarbs(options),
-    getDietaryFat(options),
+    HealthKit.queryQuantitySamples(
+      HKQuantityTypeIdentifier.dietaryEnergyConsumed,
+      {
+        startDate: startOfDay,
+        endDate: endOfDay,
+      }
+    ).then(samples => samples.reduce((total, sample) => total + sample.quantity, 0)),
+    HealthKit.queryQuantitySamples(
+      HKQuantityTypeIdentifier.dietaryProtein,
+      {
+        startDate: startOfDay,
+        endDate: endOfDay,
+      }
+    ).then(samples => samples.reduce((total, sample) => total + sample.quantity, 0)),
+    HealthKit.queryQuantitySamples(
+      HKQuantityTypeIdentifier.dietaryCarbohydrates,
+      {
+        startDate: startOfDay,
+        endDate: endOfDay,
+      }
+    ).then(samples => samples.reduce((total, sample) => total + sample.quantity, 0)),
+    HealthKit.queryQuantitySamples(
+      HKQuantityTypeIdentifier.dietaryFatTotal,
+      {
+        startDate: startOfDay,
+        endDate: endOfDay,
+      }
+    ).then(samples => samples.reduce((total, sample) => total + sample.quantity, 0)),
   ]);
 
   return {
-    calories,
-    protein,
-    carbohydrates: carbs,
-    fat,
-    date: new Date().toISOString(),
+    calories: calories || 0,
+    protein: protein || 0,
+    carbohydrates: carbs || 0,
+    fat: fat || 0,
+    date: now.toISOString(),
   };
 };
 
-const getDietaryEnergy = (options: HealthInputOptions): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    AppleHealthKit.getDietaryEnergy(options, (err: string, results: any) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(results?.value || 0);
-    });
-  });
-};
+export const generateSampleData = async () => {
+  const now = new Date();
+  const sampleData = [
+    {
+      calories: 500,
+      protein: 25,
+      carbs: 60,
+      fat: 15,
+      timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 2), // 2 hours ago
+    },
+    {
+      calories: 700,
+      protein: 35,
+      carbs: 80,
+      fat: 20,
+      timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 4), // 4 hours ago
+    },
+    {
+      calories: 400,
+      protein: 20,
+      carbs: 45,
+      fat: 12,
+      timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 6), // 6 hours ago
+    },
+  ];
 
-const getDietaryProtein = (options: HealthInputOptions): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    AppleHealthKit.getDietaryProtein(options, (err: string, results: any) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(results?.value || 0);
-    });
-  });
-};
+  try {
+    // Make sure HealthKit is initialized first
+    await initializeHealthKit();
 
-const getDietaryCarbs = (options: HealthInputOptions): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    AppleHealthKit.getDietaryCarbohydrates(options, (err: string, results: any) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(results?.value || 0);
-    });
-  });
-};
-
-const getDietaryFat = (options: HealthInputOptions): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    AppleHealthKit.getDietaryFatTotal(options, (err: string, results: any) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(results?.value || 0);
-    });
-  });
+    for (const meal of sampleData) {
+      const { calories, protein, carbs, fat, timestamp } = meal;
+      
+      await Promise.all([
+        // Save calories
+        HealthKit.saveQuantitySample(
+          HKQuantityTypeIdentifier.dietaryEnergyConsumed,
+          'kcal',
+          calories,
+          {
+            start: timestamp,
+            end: timestamp
+          }
+        ),
+        // Save protein
+        HealthKit.saveQuantitySample(
+          HKQuantityTypeIdentifier.dietaryProtein,
+          'g',
+          protein,
+          {
+            start: timestamp,
+            end: timestamp
+          }
+        ),
+        // Save carbs
+        HealthKit.saveQuantitySample(
+          HKQuantityTypeIdentifier.dietaryCarbohydrates,
+          'g',
+          carbs,
+          {
+            start: timestamp,
+            end: timestamp
+          }
+        ),
+        // Save fat
+        HealthKit.saveQuantitySample(
+          HKQuantityTypeIdentifier.dietaryFatTotal,
+          'g',
+          fat,
+          {
+            start: timestamp,
+            end: timestamp
+          }
+        ),
+      ]);
+    }
+    
+    console.log('Sample data generated successfully');
+    return true;
+  } catch (error) {
+    console.error('Error generating sample data:', error);
+    return false;
+  }
 }; 
