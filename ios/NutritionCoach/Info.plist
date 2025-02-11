@@ -48,5 +48,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Read nutrition data to provide personalized nutrition insights</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Write nutrition data to track your daily nutrition intake</string>
 </dict>
 </plist>
