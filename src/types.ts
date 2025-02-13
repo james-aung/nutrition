@@ -6,12 +6,14 @@ export interface NutritionData {
   date: string;
 }
 
+export interface NutritionGoals {
+  calories?: number;
+  protein?: number;
+  carbohydrates?: number;
+  fat?: number;
+}
+
 export interface DailySummary {
   nutritionData: NutritionData;
-  goals?: {
-    calories?: number;
-    protein?: number;
-    carbohydrates?: number;
-    fat?: number;
-  };
+  goals?: NutritionGoals;
 } 
